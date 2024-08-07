@@ -1,0 +1,141 @@
+from crewai import Agent, Crew, Task
+import os
+from crewai_tools import SerperDevTool, ScrapeWebsiteTool
+from pydantic import BaseModel
+
+# Set your API keys
+openai_api_key = "OPENAI_API_KEY"
+google_api_key = "GOOGLE_API_KEY"
+
+# Set environment variables
+os.environ["OPENAI_API_KEY"] = openai_api_key
+os.environ["OPENAI_MODEL_NAME"] = 'gpt-3.5-turbo'
+os.environ["GOOGLE_API_KEY"] = google_api_key
+
+# Initialize tools (example with SerperDevTool and ScrapeWebsiteTool)
+search_tool = SerperDevTool()
+scrape_tool = ScrapeWebsiteTool()
+
+# Define Pydantic models
+class TravelItinerary(BaseModel):
+    flights: dict 
+    accommodations: dict
+    local_transportation: dict
+
+class AccommodationDetails(BaseModel):
+    name: str
+    address: str
+    booking_status: str
+
+class ToursAndActivities(BaseModel):
+    recommendations: list
+
+# Define travel-related agents
+travel_planner = Agent(
+    role="Travel Planner",
+    goal=(
+        "Plan and arrange travel itineraries "
+        "including flights, accommodations, "
+        "and local transportation for travelers."
+    ),
+    tools=[search_tool, scrape_tool],
+    verbose=True,
+    backstory=(
+        "With a knack for organization and "
+        "attention to travel logistics, "
+        "you excel at curating seamless travel experiences "
+        "that cater to the preferences and needs of travelers."
+    )
+)
+
+accommodation_manager = Agent(
+    role="Accommodation Manager",
+    goal=(
+        "Secure suitable accommodations for travelers, "
+        "ensuring comfort, convenience, and adherence to budget."
+    ),
+    tools=[search_tool, scrape_tool],
+    verbose=True,
+    backstory=(
+        "Detail-oriented and resourceful, "
+        "you ensure that every aspect of accommodation "
+        "for travelers is meticulously planned and executed, "
+        "enhancing their overall travel experience."
+    )
+)
+
+tour_guide = Agent(
+    role="Tour Guide",
+    goal=(
+        "Provide insightful tours and activities "
+        "that enrich travelers' experiences "
+        "while promoting local culture and attractions."
+    ),
+    tools=[search_tool, scrape_tool],
+    verbose=True,
+    backstory=(
+        "Passionate about local culture and "
+        "knowledgeable about attractions, "
+        "you engage travelers with enriching tours "
+        "that highlight the best of each destination."
+    )
+)
+
+# Define travel tasks
+travel_task = Task(
+    description=(
+        "Plan a travel itinerary for {number_of_travelers} travelers "
+        "to {destination}. Include flights, accommodations, "
+        "and local transportation options."
+    ),
+    expected_output=(
+        "Complete travel itinerary including "
+        "flight details, accommodation options, "
+        "and local transportation recommendations."
+    ),
+    human_input=True,
+    output_json=TravelItinerary,  # Use the Pydantic model here
+    agent=travel_planner
+)
+
+accommodation_task = Task(
+    description=(
+        "Find suitable accommodations in {destination} "
+        "for {number_of_nights} nights for {number_of_travelers} travelers."
+    ),
+    expected_output="Confirmed accommodations details.",
+    human_input=True,
+    output_json=AccommodationDetails,  # Use the Pydantic model here
+    agent=accommodation_manager
+)
+
+tour_guide_task = Task(
+    description=(
+        "Plan local tours and activities in {destination} "
+        "to explore attractions related to {interests}."
+    ),
+    expected_output="Recommended tours and activities.",
+    human_input=True,
+    output_json=ToursAndActivities,  # Use the Pydantic model here
+    agent=tour_guide
+)
+
+# Define the crew
+travel_crew = Crew(
+    agents=[travel_planner, accommodation_manager, tour_guide],
+    tasks=[travel_task, accommodation_task, tour_guide_task],
+    verbose=True
+)
+
+
+# Define travel details
+travel_details = {
+    'number_of_travelers': 2,
+    'destination': "Paris, France",
+    'number_of_nights': 5,
+    'interests': "historical sites"
+}
+
+# Execute the crew tasks
+result = travel_crew.kickoff(inputs=travel_details)
+print(result)

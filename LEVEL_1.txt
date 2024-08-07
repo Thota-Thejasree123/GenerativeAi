@@ -1,0 +1,65 @@
+import openai
+
+# Set your OpenAI API key
+openai.api_key = "OPENAI_API_KEY
+
+def get_completion_from_messages(messages, model="gpt-4-turbo", temperature=0.8):
+    response = openai.ChatCompletion.create(
+        model=model,
+        messages=messages,
+        temperature=temperature
+    )
+    return response.choices[0].message["content"]
+
+def collect_messages(prompt, context):
+    context.append({'role': 'user', 'content': prompt})
+
+    while True:
+        # Send current context to get a response
+        response = get_completion_from_messages(context)
+
+        # Print the assistant's response
+        print(f"Assistant: {response}")
+
+        # Get user input
+        user_input = input("You: ").strip()  # Ensure no leading/trailing spaces
+
+        # Check if user wants to exit the conversation
+        if user_input.lower() == "exit":
+            print("Assistant: Thank you!")
+            break
+
+        # Append user input to context
+        context.append({'role': 'assistant', 'content': response})
+        context.append({'role': 'user', 'content': user_input})
+
+        # Break the loop if user input is empty (indicating end of conversation)
+        if user_input == "":
+            break
+
+        # Check if user is providing their address
+        if "address" in response.lower():
+            address = user_input
+            # Here you can implement logic to suggest the best hospital based on the address
+            suggested_hospital = suggest_hospital(address)
+            context.append({'role': 'assistant', 'content': suggested_hospital})
+
+    return response
+
+def suggest_hospital(address):
+    # Example logic to suggest a hospital based on address
+    # This can be implemented using a real-world hospital database or API
+    # For demonstration, let's assume a simple suggestion
+    return f"Based on your address '{address}', the nearest hospital is XYZ Hospital. Please consult them for further assistance."
+
+# Example usage of interactive session
+context = [
+    {'role': 'system', 'content': 'You are a medical assistant bot. You will welcome the user by saying "Hello, How can I assist you today?", then ask for the issues or symptoms faced by the user. Specify some possible reasons in bullet points, and if they ask for any precautions, suggest some precautions to be taken.If the user ask to suggest a best doctor,then ask their address and suggest 5 best doctors near their location. Ensure that you do not recommend any medications and finally suggest consulting a doctor. Remember to mention that this is not a substitute for professional medical advice.'},
+    {'role': 'assistant', 'content': 'Hello, How can I assist you today?'}
+]
+
+prompt = "Please summarize the information collected from the user."
+
+response = collect_messages(prompt, context)
+
+print(response)
